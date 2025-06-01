@@ -109,7 +109,7 @@ class LossCurves(Scene):
             val_label_text="Val DFL Loss",
             train_color=YELLOW,
             val_color=PURPLE,
-            narration_text="Lastly, the DFL loss — yellow for training, purple for validation."
+            narration_text="Lastly, the DFL loss. Yellow for training, purple for validation."
         )
 
         # === Outro ===
