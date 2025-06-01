@@ -1,5 +1,6 @@
 from manim import *
 import pandas as pd
+import numpy as np
 
 class LossCurves(Scene):
     def construct(self):
@@ -11,6 +12,7 @@ class LossCurves(Scene):
         # === Load CSV data ===
         df = pd.read_csv("results.csv")
         epochs = range(len(df))
+        x_vals = list(epochs)
 
         # Extract loss values
         train_box = df["train/box_loss"].values
@@ -20,118 +22,98 @@ class LossCurves(Scene):
         train_dfl = df["train/dfl_loss"].values
         val_dfl = df["val/dfl_loss"].values
 
+        # Helper: create smooth plot using interpolation
+        def make_curve(axes, x_vals, y_vals, color):
+            return axes.plot(
+                lambda x: np.interp(x, x_vals, y_vals),
+                x_range=[x_vals[0], x_vals[-1]],
+                color=color
+            )
+
+        # === Function to render each loss pair ===
+        def show_loss_pair(train_vals, val_vals, train_color, val_color, train_label_text, val_label_text, narration_text):
+            y_max = max(max(train_vals), max(val_vals)) + 0.2
+            axes = Axes(
+                x_range=[0, len(df), 10],
+                y_range=[0, y_max, round(y_max / 10, 2)],
+                x_length=10,
+                y_length=5,
+                axis_config={"include_tip": False}
+            ).center().shift(DOWN * 0.5)
+            axes.add_coordinates(font_size=20)
+
+            self.play(Create(axes))
+
+            train_curve = make_curve(axes, x_vals, train_vals, train_color)
+            val_curve = make_curve(axes, x_vals, val_vals, val_color)
+
+            train_label = Text(train_label_text, font_size=24, color=train_color).next_to(train_curve, UP, buff=0.3)
+            val_label = Text(val_label_text, font_size=24, color=val_color).next_to(val_curve, RIGHT, buff=0.3)
+
+            narration = Paragraph(
+                narration_text,
+                font_size=22,
+                width=10
+            ).next_to(axes, DOWN, buff=0.6)
+
+            self.play(Create(train_curve), FadeIn(train_label))
+            self.play(Create(val_curve), FadeIn(val_label), Write(narration))
+            self.wait(3)
+
+            self.play(
+                FadeOut(train_curve), FadeOut(val_curve),
+                FadeOut(train_label), FadeOut(val_label),
+                FadeOut(narration), FadeOut(axes)
+            )
+
         # === Narration 1 ===
-        narration1 = Paragraph(
+        intro = Paragraph(
             "Let's start by visualizing how the loss evolves during training.",
-            font_size=24, width=10
-        ).to_edge(DOWN, buff=0.5)
-        self.play(Write(narration1))
+            font_size=22, width=10
+        ).move_to(DOWN * 3)
+        self.play(Write(intro))
         self.wait(2)
-        self.play(FadeOut(narration1))
-        
+        self.play(FadeOut(intro))
 
-        # === Axes ===
-        max_loss = max(
-            max(train_box), max(val_box),
-            max(train_cls), max(val_cls),
-            max(train_dfl), max(val_dfl)
-        )
-        
-        axes = Axes(
-            x_range=[0, len(df), 5],
-            y_range=[0, max_loss + 0.5, 0.5],
-            x_length=10,
-            y_length=5,
-            axis_config={"include_tip": False}
-        ).center().shift(DOWN * 0.5)
-        
-        axes.add_coordinates()
-        
-
-        x_vals = list(epochs)
-
-        self.play(Create(axes))
-
-        # === Plot Box Loss ===
-        train_box_curve = axes.plot_line_graph(
-            x_values=x_vals,
-            y_values=train_box,
-            line_color=GREEN
-        )
-        val_box_curve = axes.plot_line_graph(
-            x_values=x_vals,
-            y_values=val_box,
-            line_color=RED
+        # === Show box loss ===
+        show_loss_pair(
+            train_vals=train_box,
+            val_vals=val_box,
+            train_color=GREEN,
+            val_color=RED,
+            train_label_text="Train Box Loss",
+            val_label_text="Val Box Loss",
+            narration_text="Green shows training box loss, red shows validation box loss."
         )
 
-        train_box_label = Text("Train Box Loss", font_size=24, color=GREEN).next_to(train_box_curve, UP, buff=0.3)
-        val_box_label = Text("Val Box Loss", font_size=24, color=RED).next_to(val_box_curve, RIGHT, buff=0.3)
-
-        narration2 = Paragraph(
-            "Green shows training box loss, red shows validation box loss.",
-            font_size=24, width=10
-        ).to_edge(DOWN, buff=0.5)
-
-        self.play(Create(train_box_curve), FadeIn(train_box_label))
-        self.play(Create(val_box_curve), FadeIn(val_box_label), Write(narration2))
-        self.wait(3)
-        self.play(FadeOut(train_box_curve), FadeOut(val_box_curve), FadeOut(train_box_label), FadeOut(val_box_label), FadeOut(narration2))
-
-        # === Plot Class Loss ===
-        train_cls_curve = axes.plot_line_graph(
-            x_values=x_vals,
-            y_values=train_cls,
-            line_color=BLUE
-        )
-        val_cls_curve = axes.plot_line_graph(
-            x_values=x_vals,
-            y_values=val_cls,
-            line_color=ORANGE
+        # === Show classification loss ===
+        show_loss_pair(
+            train_vals=train_cls,
+            val_vals=val_cls,
+            train_color=BLUE,
+            val_color=ORANGE,
+            train_label_text="Train Cls Loss",
+            val_label_text="Val Cls Loss",
+            narration_text="Now we see the classification loss. Training is in blue, validation in orange."
         )
 
-        train_cls_label = Text("Train Cls Loss", font_size=24, color=BLUE).next_to(train_cls_curve, UP, buff=0.3)
-        val_cls_label = Text("Val Cls Loss", font_size=24, color=ORANGE).next_to(val_cls_curve, RIGHT, buff=0.3)
-
-        narration3 = Paragraph(
-            "Now we see the classification loss. Training is in blue, validation in orange.",
-            font_size=24, width=10
-        ).to_edge(DOWN, buff=0.5)
-
-        self.play(Create(train_cls_curve), FadeIn(train_cls_label))
-        self.play(Create(val_cls_curve), FadeIn(val_cls_label), Write(narration3))
-        self.wait(3)
-        self.play(FadeOut(train_cls_curve), FadeOut(val_cls_curve), FadeOut(train_cls_label), FadeOut(val_cls_label), FadeOut(narration3))
-
-        # === Plot DFL Loss ===
-        train_dfl_curve = axes.plot_line_graph(
-            x_values=x_vals,
-            y_values=train_dfl,
-            line_color=YELLOW
-        )
-        val_dfl_curve = axes.plot_line_graph(
-            x_values=x_vals,
-            y_values=val_dfl,
-            line_color=PURPLE
+        # === Show DFL loss ===
+        show_loss_pair(
+            train_vals=train_dfl,
+            val_vals=val_dfl,
+            train_color=YELLOW,
+            val_color=PURPLE,
+            train_label_text="Train DFL Loss",
+            val_label_text="Val DFL Loss",
+            narration_text="Lastly, the DFL loss — yellow for training, purple for validation."
         )
 
-        train_dfl_label = Text("Train DFL Loss", font_size=24, color=YELLOW).next_to(train_dfl_curve, UP, buff=0.3)
-        val_dfl_label = Text("Val DFL Loss", font_size=24, color=PURPLE).next_to(val_dfl_curve, RIGHT, buff=0.3)
-
-        narration4 = Paragraph(
-            "Lastly, the DFL loss — yellow for training, purple for validation.",
-            font_size=24, width=10
-        ).to_edge(DOWN, buff=0.5)
-
-        self.play(Create(train_dfl_curve), FadeIn(train_dfl_label))
-        self.play(Create(val_dfl_curve), FadeIn(val_dfl_label), Write(narration4))
-        self.wait(3)
-        self.play(FadeOut(train_dfl_curve), FadeOut(val_dfl_curve), FadeOut(train_dfl_label), FadeOut(val_dfl_label), FadeOut(narration4))
-
-        # Outro
+        # === Outro ===
         outro = Paragraph(
             "These loss curves help us understand model performance and generalization.",
-            font_size=24, width=10
-        ).to_edge(DOWN, buff=0.5)
+            font_size=22,
+            width=10
+        ).move_to(DOWN * 3)
         self.play(Write(outro))
         self.wait(3)
-        self.play(FadeOut(outro), FadeOut(axes), FadeOut(title))
+        self.play(FadeOut(outro), FadeOut(title))
