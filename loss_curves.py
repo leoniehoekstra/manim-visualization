@@ -28,16 +28,25 @@ class LossCurves(Scene):
         self.play(Write(narration1))
         self.wait(2)
         self.play(FadeOut(narration1))
+        
 
         # === Axes ===
+        max_loss = max(
+            max(train_box), max(val_box),
+            max(train_cls), max(val_cls),
+            max(train_dfl), max(val_dfl)
+        )
+        
         axes = Axes(
             x_range=[0, len(df), 5],
-            y_range=[0, max(max(train_box), max(val_box), max(train_cls), max(val_cls), max(train_dfl), max(val_dfl)) + 0.5, 0.5],
+            y_range=[0, max_loss + 0.5, 0.5],
             x_length=10,
             y_length=5,
-            axis_config={"include_tip": False},
-            x_axis_config={"numbers_to_show": list(range(0, len(df), 5))},
+            axis_config={"include_tip": False}
         ).center().shift(DOWN * 0.5)
+        
+        axes.add_coordinates()
+        
 
         x_vals = list(epochs)
 
